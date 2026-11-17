@@ -16,4 +16,12 @@ async function show(req, res) {
   res.json(await reportService.getById(reportId(req.params.id), req.user));
 }
 
-module.exports = { list, show };
+async function resend(req, res) {
+  res.json(await reportService.resend(reportId(req.params.id), req.user));
+}
+
+async function remove(req, res) {
+  res.json(await reportService.remove(reportId(req.params.id), req.user));
+}
+
+module.exports = { list, show, resend, remove };

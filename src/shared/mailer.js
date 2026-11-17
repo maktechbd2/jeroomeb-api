@@ -69,4 +69,25 @@ async function sendTeamWelcomeEmail({ to, fullName, organizationName, roleLabel,
   });
 }
 
-module.exports = { sendPasswordResetEmail, sendTenantWelcomeEmail, sendTeamWelcomeEmail };
+async function sendInspectionReportEmail({ to, propertyName, propertyCode, templateName, specialistName, completedAt }) {
+  await transporter.sendMail({
+    from: fromAddress(),
+    to,
+    subject: `Inspection report for ${propertyName}`,
+    text: [
+      `The inspection report for ${propertyName} is ready.`,
+      "",
+      `Property: ${propertyName} (${propertyCode})`,
+      `Checklist: ${templateName}`,
+      `Specialist: ${specialistName || "Unassigned"}`,
+      `Completed: ${completedAt}`,
+    ].join("\n"),
+  });
+}
+
+module.exports = {
+  sendPasswordResetEmail,
+  sendTenantWelcomeEmail,
+  sendTeamWelcomeEmail,
+  sendInspectionReportEmail,
+};

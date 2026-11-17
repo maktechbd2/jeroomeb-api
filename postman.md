@@ -436,3 +436,41 @@ Body none. Super admin only. Expect `200` and `payout.status` `APPROVED`. That r
 Body none. Super admin only. The row must already be `APPROVED`. Expect `200`, `status` `PAID`, and `paidAt`. A `PENDING` row returns `400` and `{ "message": "Approve this payout before paying" }`. Paying it again returns `409` and `{ "message": "This payout is already paid" }`.
 
 A specialist token on approve or pay returns `403`. No token returns `401`. A specialist `GET /api/v1/payouts` returns only that specialist's rows and cards.
+
+## 15. Reports
+
+The Reports page lists completed inspections. A row exists only after an inspection is resolved. Log in as `admin@amenityops.com` and set that `token` as **Authorization → Bearer Token**.
+
+`GET http://localhost:3000/api/v1/reports`
+
+Body none. Expect `200`.
+
+`reports` is the card list, newest first. Each card has:
+
+| Key | Screen |
+| --- | --- |
+| `propertyName` | Title, such as `John (Test) Public - Condo's` |
+| `propertyCode` | Code next to the title, such as `PROP-CA9310` |
+| `templateName` | Checklist name under the title |
+| `specialistName` | Name after the dash. Empty when no specialist is assigned |
+| `completedAt` | Completed date |
+| `emailedAt` | Set after Resend email succeeds. Empty until then |
+| `pdfUrl` | Empty until a PDF is stored |
+
+`SUPER_ADMIN`, `TEAM_MEMBER`, and `SPECIALIST` can open the list. A specialist only sees reports for inspections assigned to them. No token returns `401`. A client token returns `403`.
+
+`GET http://localhost:3000/api/v1/reports/<report-id>` is one card. An unknown id returns `404` and `{ "message": "Report not found" }`.
+
+### Resend email
+
+`POST http://localhost:3000/api/v1/reports/<report-id>/resend`
+
+Leave the body empty. Do not send `Content-Type: application/json` with an empty body. Super admin only. Expect `200`. The email goes to the property's `email` and includes the property name, code, checklist, specialist, and completed time. `report.emailedAt` is set.
+
+A property with no email returns `400` and `{ "message": "This property has no email" }`. An unknown id returns `404`. A specialist or client token returns `403`.
+
+### Delete
+
+`DELETE http://localhost:3000/api/v1/reports/<report-id>`
+
+Body none. Super admin only. Expect `200` and `{ "message": "Report deleted" }`. The card leaves the list. The inspection stays `RESOLVED_CLOSED`. Deleting the same id again returns `404`. A specialist or client token returns `403`.

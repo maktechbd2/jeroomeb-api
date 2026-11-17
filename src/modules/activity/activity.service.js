@@ -2,6 +2,8 @@ const prisma = require("../../shared/prisma");
 
 const titles = {
   INSPECTION_RESOLVED: "Inspection report submitted",
+  REPORT_EMAILED: "Inspection report emailed",
+  REPORT_DELETED: "Inspection report deleted",
   INSPECTION_CREATED: "Inspection scheduled",
   INSPECTION_UPDATED: "Inspection updated",
   INSPECTION_CANCELLED: "Inspection cancelled",
