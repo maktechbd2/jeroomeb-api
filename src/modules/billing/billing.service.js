@@ -145,11 +145,11 @@ async function checkout(user, input) {
   }
 
   const successUrl = returnUrl(
-    input.successUrl || "https://jeroomeb.maktechgroup.tech/billing/success",
+    input.successUrl || "https://amenityops.com/billing/success",
     "successUrl"
   );
   const cancelUrl = returnUrl(
-    input.cancelUrl || "https://jeroomeb.maktechgroup.tech/billing/cancel",
+    input.cancelUrl || "https://amenityops.com/billing/cancel",
     "cancelUrl"
   );
 

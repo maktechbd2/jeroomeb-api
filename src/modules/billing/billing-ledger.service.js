@@ -37,7 +37,7 @@ function returnUrl(value, fallback) {
 }
 
 function checkoutSuccessUrl(value) {
-  const target = returnUrl(value, "https://jeroomeb.maktechgroup.tech/billing/success");
+  const target = returnUrl(value, "https://amenityops.com/billing/success");
   if (target.includes("{CHECKOUT_SESSION_ID}")) return target;
   return `${target}${target.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`;
 }
@@ -269,7 +269,7 @@ async function startPaymentMethod(user, input) {
       userId: user.id,
     },
     success_url: checkoutSuccessUrl(input.successUrl),
-    cancel_url: returnUrl(input.cancelUrl, "https://jeroomeb.maktechgroup.tech/billing/cancel"),
+    cancel_url: returnUrl(input.cancelUrl, "https://amenityops.com/billing/cancel"),
   };
   try {
     const session = await stripe.checkout.sessions.create(payload);

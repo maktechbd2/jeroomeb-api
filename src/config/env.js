@@ -19,6 +19,8 @@ const envSchema = z.object({
     .string()
     .default(
       [
+        "https://amenityops.com",
+        "https://www.amenityops.com",
         "https://jeroomeb.maktechgroup.tech",
         "http://localhost:5173",
         "http://127.0.0.1:5173",

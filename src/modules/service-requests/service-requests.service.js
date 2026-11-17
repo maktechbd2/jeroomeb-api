@@ -178,7 +178,7 @@ function toCents(amount) {
 }
 
 function checkoutReturnUrl(value) {
-  const fallback = "https://jeroomeb.maktechgroup.tech/billing/success";
+  const fallback = "https://amenityops.com/billing/success";
   const target = value || fallback;
   if (target.includes("{CHECKOUT_SESSION_ID}")) return target;
   return `${target}${target.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`;
@@ -245,7 +245,7 @@ async function requestAddOn(user, addOnServiceId) {
         },
       ],
       success_url: checkoutReturnUrl(),
-      cancel_url: "https://jeroomeb.maktechgroup.tech/billing/cancel",
+      cancel_url: "https://amenityops.com/billing/cancel",
     });
   } catch (error) {
     console.error(error);
