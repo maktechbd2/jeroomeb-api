@@ -29,6 +29,7 @@ function createApp() {
     res.json({ ok: true, message: "API is running properly" });
   });
 
+  // health check
   app.get("/health", (req, res) => {
     res.json({ ok: true, message: "Server is running" });
   });
