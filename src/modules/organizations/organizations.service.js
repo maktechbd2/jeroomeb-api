@@ -23,13 +23,68 @@ function toPlan(plan) {
   };
 }
 
+const statusLabels = {
+  UNPAID: "Pending",
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
+  SUSPENDED: "Suspended",
+  CANCELLED: "Cancelled",
+};
+
+function initials(name) {
+  const words = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  const letters = (words[0] || "T").replace(/[^a-zA-Z0-9]/g, "");
+  return (letters.slice(0, 2) || "T").toUpperCase();
+}
+
+function slugify(name) {
+  const slug = String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return slug || "tenant";
+}
+
+function licenseTier(organization) {
+  if (organization.licensePlan) return organization.licensePlan.name;
+  if (organization.servicePriceBand) return organization.servicePriceBand.name;
+  return null;
+}
+
+function pickAdmin(users) {
+  const people = users || [];
+  const admin = people.find((user) => user.role === "TENANT_ADMIN") || people[0];
+  if (!admin) return null;
+  return {
+    id: admin.id,
+    fullName: admin.fullName,
+    email: admin.email,
+    joinedAt: admin.createdAt,
+  };
+}
+
 function toTenant(organization) {
+  const properties = organization.properties || [];
+  const countedProperties = organization._count ? organization._count.properties : undefined;
+  const propertyCount = organization.properties ? properties.length : countedProperties;
+  const activePropertyCount = organization.properties
+    ? properties.filter((property) => property.status === "ACTIVE").length
+    : undefined;
+  const staffCount = organization._count ? organization._count.users : undefined;
   return {
     id: organization.id,
     name: organization.name,
+    initials: initials(organization.name),
+    slug: slugify(organization.name),
     subscriptionStatus: organization.subscriptionStatus,
+    statusLabel: statusLabels[organization.subscriptionStatus] || organization.subscriptionStatus,
     propertyLimit: organization.propertyLimit,
     licensePlan: toPlan(organization.licensePlan),
+    licenseTier: licenseTier(organization),
     planKind: organization.planKind,
     paidAt: organization.paidAt,
     priceBand: organization.servicePriceBand
@@ -40,24 +95,124 @@ function toTenant(organization) {
           monthlyPrice: money(organization.servicePriceBand.monthlyPrice),
         }
       : null,
-    userCount: organization._count ? organization._count.users : undefined,
-    propertyCount: organization._count ? organization._count.properties : undefined,
+    admin: pickAdmin(organization.users),
+    userCount: staffCount,
+    staffCount,
+    propertyCount,
+    activePropertyCount,
     createdAt: organization.createdAt,
   };
 }
 
+const listInclude = {
+  licensePlan: true,
+  servicePriceBand: true,
+  properties: { select: { status: true } },
+  users: {
+    where: { role: "TENANT_ADMIN", status: { not: "DISABLED" } },
+    select: { id: true, email: true, fullName: true, role: true, status: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+    take: 1,
+  },
+  _count: {
+    select: {
+      users: { where: { status: { not: "DISABLED" } } },
+    },
+  },
+};
+
 const tenantInclude = {
   licensePlan: true,
   servicePriceBand: true,
-  _count: { select: { users: true, properties: true } },
+  properties: { select: { id: true, status: true } },
+  users: {
+    where: { status: { not: "DISABLED" } },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      phone: true,
+      role: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "asc" },
+  },
+  _count: {
+    select: {
+      users: { where: { status: { not: "DISABLED" } } },
+    },
+  },
 };
 
-async function list() {
+function listStatus(value) {
+  if (!value) return null;
+  const raw = value.trim().toUpperCase();
+  if (!raw || raw === "ALL") return null;
+  const status = raw === "PENDING" ? "UNPAID" : raw;
+  if (!Object.prototype.hasOwnProperty.call(statusLabels, status)) {
+    throw new HttpError(400, "Unknown status");
+  }
+  return status;
+}
+
+function matchesSearch(tenant, q) {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  const fields = [tenant.name, tenant.slug, tenant.id, tenant.admin && tenant.admin.fullName, tenant.admin && tenant.admin.email];
+  return fields.some((field) => field && String(field).toLowerCase().includes(needle));
+}
+
+async function list(query = {}) {
   const organizations = await prisma.organization.findMany({
-    include: tenantInclude,
+    include: listInclude,
     orderBy: { createdAt: "desc" },
   });
-  return { tenants: organizations.map(toTenant) };
+  const missingAdmin = organizations.filter((organization) => organization.users.length === 0);
+  if (missingAdmin.length) {
+    const fallbacks = await prisma.user.findMany({
+      where: {
+        organizationId: { in: missingAdmin.map((organization) => organization.id) },
+        status: { not: "DISABLED" },
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        organizationId: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    const firstByOrg = new Map();
+    for (const user of fallbacks) {
+      if (!firstByOrg.has(user.organizationId)) firstByOrg.set(user.organizationId, user);
+    }
+    for (const organization of missingAdmin) {
+      const user = firstByOrg.get(organization.id);
+      if (user) organization.users = [user];
+    }
+  }
+  const tenants = organizations.map(toTenant);
+  const status = listStatus(query.status);
+  const q = query.q ? query.q.trim() : "";
+  return {
+    cards: {
+      subscribedTenants: tenants.filter((tenant) => tenant.subscriptionStatus === "ACTIVE").length,
+      totalAccounts: tenants.length,
+      activePropertySkus: tenants.reduce((sum, tenant) => sum + (tenant.activePropertyCount || 0), 0),
+      totalLicensedCapacity: organizations.reduce(
+        (sum, organization) => sum + (organization.propertyLimit || 0),
+        0
+      ),
+    },
+    tenants: tenants.filter((tenant) => {
+      if (status && tenant.subscriptionStatus !== status) return false;
+      return matchesSearch(tenant, q);
+    }),
+  };
 }
 
 async function getById(id) {
@@ -73,6 +228,7 @@ async function getById(id) {
           phone: true,
           role: true,
           status: true,
+          createdAt: true,
         },
         orderBy: { createdAt: "asc" },
       },
@@ -158,6 +314,11 @@ async function provision(input, actor) {
       return { organization, user };
     });
 
+    const saved = await prisma.organization.findUnique({
+      where: { id: result.organization.id },
+      include: tenantInclude,
+    });
+
     try {
       await sendTenantWelcomeEmail({
         to: email,
@@ -171,7 +332,7 @@ async function provision(input, actor) {
     }
 
     return {
-      tenant: toTenant(result.organization),
+      tenant: toTenant(saved),
       user: {
         id: result.user.id,
         email: result.user.email,

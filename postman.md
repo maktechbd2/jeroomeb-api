@@ -218,7 +218,56 @@ These need the super admin token.
 
 Expect `201` with the tenant and a `TENANT_ADMIN` user. The password is not in the response. Optional `checklistTemplateIds` attaches checklist access. A Full-Service tier id returns `400` and `{ "message": "Software plan not found" }`.
 
-`GET /api/v1/organizations` lists tenants. `GET /api/v1/organizations/<id>` is the tenant detail.
+### Tenants & Licenses page
+
+Log in as `admin@amenityops.com` and set that `token` as **Authorization → Bearer Token**. `TEAM_MEMBER` can call these too. A client token returns `403`. No token returns `401`.
+
+`GET http://localhost:3000/api/v1/organizations`
+
+Body none. Expect `200`.
+
+`cards` stays the full platform totals. Search and status do not change the cards.
+
+| Key | Screen |
+| --- | --- |
+| `subscribedTenants` | Subscribed Tenants. Organizations with `subscriptionStatus` `ACTIVE`. |
+| `totalAccounts` | The small line under that card, such as `3 total accounts`. |
+| `activePropertySkus` | Active Property SKUs. Properties whose status is `ACTIVE`. |
+| `totalLicensedCapacity` | Total Licensed Capacity. Sum of each tenant's `propertyLimit`. A tenant with no limit adds nothing. |
+
+`tenants` is the card list, newest first. Each card has:
+
+| Key | Screen |
+| --- | --- |
+| `initials` | The two letters, such as `NC` |
+| `name` | Tenant name |
+| `slug` | The line under the name, such as `northstar-communities` |
+| `statusLabel` | Badge. `ACTIVE` is `Active`. `UNPAID` is `Pending`. Also `Inactive`, `Suspended`, `Cancelled` |
+| `licenseTier` | License tier name from the software plan. Empty when the tenant has no plan |
+| `staffCount` | In-house staff. Users of that tenant who are not disabled |
+| `activePropertyCount` | Left number of the capacity bar |
+| `propertyLimit` | Right number of the capacity bar. Empty when no limit was set |
+| `admin.fullName` | Admin name |
+| `admin.joinedAt` | Joined date |
+
+`admin` is the tenant's `TENANT_ADMIN`. When the account has no tenant admin, it is the first user. There is no `TEN-` code. Search by the tenant `id` (the uuid) instead.
+
+Search is `q`. It matches name, slug, id, admin name, and admin email.
+
+`GET http://localhost:3000/api/v1/organizations?q=northstar`
+
+Status filter:
+
+- All: `GET /api/v1/organizations`
+- Active: `GET /api/v1/organizations?status=ACTIVE`
+- Pending: `GET /api/v1/organizations?status=PENDING` (this is `UNPAID`)
+- Inactive: `GET /api/v1/organizations?status=INACTIVE`
+- Suspended: `GET /api/v1/organizations?status=SUSPENDED`
+- Cancelled: `GET /api/v1/organizations?status=CANCELLED`
+
+An unknown status, such as `?status=NOPE`, returns `400` and `{ "message": "Unknown status" }`. The cards in a filtered response are still the unfiltered totals.
+
+`GET http://localhost:3000/api/v1/organizations/<id>` is **Open tenant details**. Expect `200` with the same card fields plus `users`, `properties`, and `checklists`. An unknown id returns `404` and `{ "message": "Tenant not found" }`.
 
 `POST /api/v1/properties` creates a property for that tenant. `GET /api/v1/properties` lists them. `PATCH /api/v1/properties/<id>` edits one. Sending a new `status` writes an activity event. `DELETE /api/v1/properties/<id>` deletes it.
 

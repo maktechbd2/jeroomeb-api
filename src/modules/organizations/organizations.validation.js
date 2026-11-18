@@ -14,4 +14,9 @@ const provisionTenantSchema = z.object({
   }),
 });
 
-module.exports = { provisionTenantSchema };
+const listTenantsQuery = z.object({
+  q: z.string().trim().max(120).optional(),
+  status: z.string().trim().max(40).optional(),
+});
+
+module.exports = { provisionTenantSchema, listTenantsQuery };

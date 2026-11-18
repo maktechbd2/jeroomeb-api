@@ -1,6 +1,6 @@
 const { z } = require("zod");
 const { parseBody, HttpError } = require("../../shared/http");
-const { provisionTenantSchema } = require("./organizations.validation");
+const { provisionTenantSchema, listTenantsQuery } = require("./organizations.validation");
 const organizationService = require("./organizations.service");
 
 function tenantId(value) {
@@ -10,7 +10,8 @@ function tenantId(value) {
 }
 
 async function list(req, res) {
-  res.json(await organizationService.list());
+  const query = parseBody(listTenantsQuery, req.query);
+  res.json(await organizationService.list(query));
 }
 
 async function show(req, res) {
