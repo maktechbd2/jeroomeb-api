@@ -22,6 +22,7 @@ const chatRoutes = require("./chats/chats.routes");
 const accessKeyRoutes = require("./access-keys/access-keys.routes");
 const specialistFeedbackRoutes = require("./specialist-feedback/specialist-feedback.routes");
 const inspectorsRoutes = require("./supabase-inspectors/supabase-inspectors.routes");
+const supabaseTenantsRoutes = require("./supabase-tenants/supabase-tenants.routes");
 
 function registerModules(app) {
   app.use("/api/v1/auth", authRoutes);
@@ -48,6 +49,7 @@ function registerModules(app) {
   app.use("/api/v1/access-keys", accessKeyRoutes);
   app.use("/api/v1/specialist-feedback", specialistFeedbackRoutes);
   app.use("/api/v1/inspectors", inspectorsRoutes);
+  app.use("/api/v1/supabase-tenants", supabaseTenantsRoutes);
 }
 
 module.exports = { registerModules };
